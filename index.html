@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Online Disaster Helpdesk</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #0077b6;
+      color: white;
+      padding: 15px;
+      text-align: center;
+    }
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      background: #023e8a;
+      padding: 10px;
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    h2 { color: #0077b6; }
+    input, textarea, button {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      background: #0077b6;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #023e8a;
+    }
+    .hidden { display: none; }
+    ul { list-style: none; padding: 0; }
+    li {
+      background: #f1f1f1;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .status {
+      font-size: 14px;
+      font-weight: bold;
+    }
+    .pending { color: orange; }
+    .accepted { color: blue; }
+    .completed { color: green; }
+    .report {
+      margin-top: 20px;
+      padding: 10px;
+      background: #e9f5f9;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    th { background: #0077b6; color: white; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Online Disaster Helpdesk</h1>
+</header>
+
+<nav>
+  <a onclick="showSection('victim')">Victim Request</a>
+  <a onclick="showSection('volunteer')">Volunteer View</a>
+  <a onclick="showSection('admin')">Admin Panel</a>
+</nav>
+
+<div class="container">
+  <!-- Victim Form -->
+  <section id="victim">
+    <h2>Submit a Help Request</h2>
+    <form id="victimForm">
+      <input type="text" id="name" placeholder="Your Name" required>
+      <input type="text" id="location" placeholder="Your Location" required>
+      <textarea id="details" placeholder="Describe your need" required></textarea>
+      <button type="submit">Submit Request</button>
+    </form>
+  </section>
+
+  <!-- Volunteer View -->
+  <section id="volunteer" class="hidden">
+    <h2>Assigned Requests</h2>
+    <ul id="volunteerList"></ul>
+  </section>
+
+  <!-- Admin Panel -->
+  <section id="admin" class="hidden">
+    <h2>Admin Assign Requests</h2>
+    <ul id="requestList"></ul>
+
+    <!-- Report Section -->
+    <div class="report">
+      <h2>Completed Requests Report (Day to Day)</h2>
+      <div id="reportContent"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+  let requests = [];
+
+  function showSection(id) {
+    document.querySelectorAll("section").forEach(sec => sec.classList.add("hidden"));
+    document.getElementById(id).classList.remove("hidden");
+  }
+
+  // Victim submits request
+  document.getElementById("victimForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    let name = document.getElementById("name").value;
+    let location = document.getElementById("location").value;
+    let details = document.getElementById("details").value;
+
+    let newRequest = {
+      id: Date.now(),
+      name,
+      location,
+      details,
+      status: "Pending",   // Default
+      assigned: false,
+      completedDate: null
+    };
+    requests.push(newRequest);
+
+    alert("Request Submitted Successfully!");
+    this.reset();
+    updateAdminPanel();
+  });
+
+  // Update Admin Panel
+  function updateAdminPanel() {
+    let requestList = document.getElementById("requestList");
+    requestList.innerHTML = "";
+    requests.forEach(req => {
+      let li = document.createElement("li");
+      li.innerHTML = `
+        <b>${req.name}</b> (${req.location}) - ${req.details}
+        <br>Status: <span class="status ${req.status.toLowerCase()}">${req.status}</span>
+        ${!req.assigned ? `<br><button onclick="assignVolunteer(${req.id})">Assign Volunteer</button>` : ""}
+      `;
+      requestList.appendChild(li);
+    });
+    updateReport();
+  }
+
+  // Assign volunteer
+  function assignVolunteer(id) {
+    let req = requests.find(r => r.id === id);
+    if (req) {
+      req.assigned = true;
+      req.status = "Pending";
+      updateAdminPanel();
+      updateVolunteerView();
+    }
+  }
+
+  // Volunteer View
+  function updateVolunteerView() {
+    let volunteerList = document.getElementById("volunteerList");
+    volunteerList.innerHTML = "";
+    requests.filter(r => r.assigned).forEach(req => {
+      let li = document.createElement("li");
+      li.innerHTML = `
+        <b>${req.name}</b> needs help at <b>${req.location}</b>: ${req.details}
+        <br>Status: <span class="status ${req.status.toLowerCase()}">${req.status}</span>
+        ${req.status === "Pending" ? `<br><button onclick="acceptRequest(${req.id})">Accept</button>` : ""}
+        ${req.status === "Accepted" ? `<br><button onclick="completeRequest(${req.id})">Completed</button>` : ""}
+      `;
+      volunteerList.appendChild(li);
+    });
+  }
+
+  // Volunteer Accept
+  function acceptRequest(id) {
+    let req = requests.find(r => r.id === id);
+    if (req) {
+      req.status = "Accepted";
+      updateVolunteerView();
+      updateAdminPanel();
+    }
+  }
+
+  // Volunteer Complete
+  function completeRequest(id) {
+    let req = requests.find(r => r.id === id);
+    if (req) {
+      req.status = "Completed";
+      req.completedDate = new Date().toISOString().split("T")[0]; // store date (YYYY-MM-DD)
+      updateVolunteerView();
+      updateAdminPanel();
+    }
+  }
+
+  // Generate Report
+  function updateReport() {
+    let reportDiv = document.getElementById("reportContent");
+    let completedRequests = requests.filter(r => r.status === "Completed");
+
+    if (completedRequests.length === 0) {
+      reportDiv.innerHTML = "<p>No completed requests yet.</p>";
+      return;
+    }
+
+    // Group by date
+    let grouped = {};
+    completedRequests.forEach(r => {
+      if (!grouped[r.completedDate]) {
+        grouped[r.completedDate] = [];
+      }
+      grouped[r.completedDate].push(r);
+    });
+
+    let html = "";
+    for (let date in grouped) {
+      html += `<h3>${date}</h3>`;
+      html += `<table><tr><th>Name</th><th>Location</th><th>Details</th></tr>`;
+      grouped[date].forEach(r => {
+        html += `<tr><td>${r.name}</td><td>${r.location}</td><td>${r.details}</td></tr>`;
+      });
+      html += `</table>`;
+    }
+
+    reportDiv.innerHTML = html;
+  }
+</script>
+
+</body>
+</html>
